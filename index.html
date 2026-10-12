@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#5fa8e8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Village Dash: Bring the Pup Home</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐶</text></svg>">
+<style>
+  :root { --y: #ffd21f; --ink: #13202c; --glass: rgba(16, 24, 34, .62); --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px); }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe4f2; font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif; color: #fff; user-select: none; -webkit-user-select: none; touch-action: none; }
+  #game, #game canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  [hidden] { display: none !important; }
+  button { font: inherit; cursor: pointer; }
+  .stars { color: var(--y); letter-spacing: 2px; text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+  .stars i { font-style: normal; color: rgba(255,255,255,.28); }
+
+  /* ---------- overlays ---------- */
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 18px; background: linear-gradient(180deg, rgba(20,60,100,.05), rgba(10,20,30,.45)); z-index: 20; }
+  .card { width: min(560px, 100%); max-height: calc(100% - 20px); overflow: auto; background: rgba(255,255,255,.94); color: var(--ink); border-radius: 26px; padding: 26px 26px 22px; box-shadow: 0 24px 60px rgba(10,30,60,.35); }
+  .title { display: flex; align-items: center; gap: 14px; }
+  .title .logo { width: 62px; height: 62px; border-radius: 18px; background: var(--y); display: grid; place-items: center; font-size: 38px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.12); flex: none; }
+  h1 { margin: 0; font-size: 34px; letter-spacing: -.5px; line-height: 1; }
+  .tag { margin: 6px 0 0; color: #4b5b6a; font-size: 15px; }
+  .story { margin: 16px 0 14px; padding: 12px 14px; border-radius: 14px; background: #fff8d6; color: #5a4a12; font-size: 14.5px; line-height: 1.4; }
+  #levels { display: grid; gap: 10px; }
+  .level { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 2px solid #e3e8ee; border-radius: 16px; background: #fff; color: var(--ink); text-align: left; transition: transform .12s, border-color .12s; }
+  .level:hover { transform: translateY(-1px); }
+  .level.sel { border-color: #2f6fd8; background: #f2f7ff; }
+  .lnum { width: 36px; height: 36px; border-radius: 12px; background: #13202c; color: var(--y); display: grid; place-items: center; font-weight: 800; flex: none; }
+  .linfo { flex: 1; min-width: 0; } .linfo b { display: block; font-size: 17px; } .linfo span { display: block; font-size: 13px; color: #607080; }
+  .lstat { text-align: right; flex: none; } .lstat .stars { font-size: 18px; } .lstat .stars i { color: #d5dbe2; } .lstat small { color: #607080; font-size: 12px; }
+  .row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .btn { flex: 1; min-width: 120px; border: 0; border-radius: 16px; padding: 15px 18px; font-size: 18px; font-weight: 800; background: #e8edf3; color: var(--ink); }
+  .btn.primary { background: var(--y); box-shadow: inset 0 -4px 0 rgba(0,0,0,.14); font-size: 20px; }
+  .btn.small { flex: 0 1 auto; min-width: 0; font-size: 14px; padding: 10px 14px; font-weight: 700; }
+  .controls { margin-top: 14px; font-size: 13px; color: #607080; line-height: 1.6; }
+  kbd { display: inline-block; min-width: 22px; padding: 1px 6px; border-radius: 6px; background: #eef2f6; border: 1px solid #d7dee6; border-bottom-width: 2px; font: 600 12px ui-monospace, monospace; color: #13202c; text-align: center; }
+  .touch .kbd-only { display: none; } .touch-only { display: none; } .touch .touch-only { display: block; }
+  .fine { margin-top: 10px; font-size: 11.5px; color: #8a97a4; }
+
+  /* results */
+  .res-head { text-align: center; }
+  .res-head .big { font-size: 64px; line-height: 1; }
+  .res-head h2 { margin: 6px 0 2px; font-size: 32px; }
+  .res-stars { font-size: 46px; text-align: center; margin: 6px 0 4px; color: #f5b800; text-shadow: 0 2px 0 rgba(0,0,0,.12); } .res-stars i { color: #d5dbe2; font-style: normal; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .stat { background: #f2f5f8; border-radius: 14px; padding: 10px 12px; } .stat small { display: block; color: #607080; font-size: 12px; } .stat b { font-size: 19px; }
+  .stat.wide { grid-column: span 2; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+  .hud-top { position: absolute; top: calc(10px + var(--safe-t)); left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .pill { background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-radius: 16px; padding: 8px 12px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+  .hud-left .lvl { font-size: 12px; opacity: .85; text-transform: uppercase; letter-spacing: 1px; }
+  .hud-left .time { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.05; }
+  .hud-left .par { font-size: 12px; opacity: .9; } .hud-left .par .stars { font-size: 13px; }
+  .hud-mid { text-align: center; } .hud-mid .d { font-size: 22px; font-weight: 800; } .hud-mid .s { font-size: 12px; opacity: .9; }
+  .hud-right { display: flex; gap: 6px; pointer-events: auto; }
+  .hbtn { width: 44px; height: 44px; border-radius: 14px; border: 0; background: var(--glass); color: #fff; font-size: 18px; font-weight: 800; backdrop-filter: blur(8px); }
+  .speedo { position: absolute; left: 14px; bottom: calc(14px + var(--safe-b)); font-weight: 800; }
+  .speedo b { font-size: 28px; font-variant-numeric: tabular-nums; } .speedo small { opacity: .85; }
+  .touch .speedo { display: none; }
+  #catchMeter { position: absolute; left: 50%; top: 58%; transform: translate(-50%, 0); width: 180px; text-align: center; font-weight: 800; font-size: 14px; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+  #catchMeter .bar { height: 10px; border-radius: 6px; background: rgba(0,0,0,.35); overflow: hidden; margin-top: 4px; }
+  #catchMeter .bar::after { content: ""; display: block; height: 100%; width: calc(var(--p, 0) * 100%); background: linear-gradient(90deg, #9fe870, #ffd21f); }
+  #arrow, #marker { position: fixed; left: 0; top: 0; z-index: 11; pointer-events: none; }
+  #arrow .wrap { position: absolute; transform: translate(-50%, -50%); width: 64px; height: 64px; }
+  #arrow .tip { position: absolute; inset: 0; }
+  #arrow .tip::before { content: ""; position: absolute; left: 50%; top: -6px; transform: translateX(-50%); border: 11px solid transparent; border-bottom: 16px solid var(--y); border-top: 0; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
+  #arrow .face { position: absolute; inset: 8px; border-radius: 50%; background: var(--y); display: grid; place-items: center; font-size: 26px; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+  #arrow .ad { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); font-weight: 800; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,.6); white-space: nowrap; }
+  #marker .m { position: absolute; transform: translate(-50%, -100%); background: var(--y); color: var(--ink); font-weight: 800; font-size: 12px; padding: 2px 7px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+  #marker .m::after { content: ""; position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--y); border-bottom: 0; }
+  #toast { position: fixed; left: 50%; top: calc(86px + var(--safe-t)); transform: translate(-50%, -10px); opacity: 0; transition: .25s; z-index: 12; background: rgba(255,255,255,.95); color: var(--ink); font-weight: 700; padding: 10px 16px; border-radius: 14px; box-shadow: 0 8px 22px rgba(0,0,0,.2); max-width: calc(100% - 30px); text-align: center; font-size: 15px; pointer-events: none; }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #count { position: fixed; left: 50%; top: 24%; transform: translate(-50%, -50%); font-size: 96px; font-weight: 900; color: var(--y); text-shadow: 0 6px 0 rgba(0,0,0,.25), 0 0 30px rgba(0,0,0,.25); z-index: 12; pointer-events: none; }
+  body:not([data-state="countdown"]) #count { animation: fadeout .5s forwards; }
+  @keyframes fadeout { to { opacity: 0; } }
+  #catchBanner { position: fixed; left: 50%; top: 17%; transform: translate(-50%, -50%); z-index: 13; text-align: center; pointer-events: none; animation: pop .5s cubic-bezier(.2,1.6,.4,1); }
+  #catchBanner .t { font-size: clamp(38px, 8vw, 72px); font-weight: 900; color: #fff; text-shadow: 0 5px 0 #d89a00, 0 10px 30px rgba(0,0,0,.35); white-space: nowrap; }
+  #catchBanner .s { margin-top: 8px; display: inline-block; background: rgba(255,255,255,.94); color: var(--ink); font-weight: 700; padding: 8px 14px; border-radius: 14px; }
+  @keyframes pop { from { transform: translate(-50%, -50%) scale(.3); opacity: 0; } }
+  #hearts { position: fixed; inset: 0; pointer-events: none; z-index: 12; }
+  #hearts span { position: absolute; bottom: 30%; animation: float 2.4s ease-out forwards; opacity: 0; }
+  @keyframes float { 0% { opacity: 0; transform: translateY(0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-260px) scale(1.2); } }
+
+  /* ---------- touch controls ---------- */
+  #touch { position: fixed; inset: auto 0 0 0; height: 46%; z-index: 9; display: none; }
+  .touch #touch { display: block; }
+  #tPad { position: absolute; left: calc(14px + env(safe-area-inset-left, 0px)); bottom: calc(18px + var(--safe-b)); width: 190px; height: 120px; border-radius: 60px; background: rgba(16,24,34,.35); border: 2px solid rgba(255,255,255,.35); touch-action: none; }
+  #tPad::before { content: "◀  STEER  ▶"; position: absolute; left: 0; right: 0; top: -22px; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: 1px; opacity: .85; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+  #tKnob { position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; margin: -36px 0 0 -36px; border-radius: 50%; background: rgba(255,255,255,.85); box-shadow: 0 4px 10px rgba(0,0,0,.25); transition: transform .05s; }
+  .tb { position: absolute; border-radius: 50%; border: 2px solid rgba(255,255,255,.5); color: #fff; font-weight: 900; display: grid; place-items: center; touch-action: none; text-shadow: 0 1px 3px rgba(0,0,0,.4); font-size: 14px; }
+  .tb.on { filter: brightness(1.3); transform: scale(.94); }
+  #tGas { right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(70px + var(--safe-b)); width: 96px; height: 96px; background: rgba(60,180,90,.7); }
+  #tBrake { right: calc(122px + env(safe-area-inset-right, 0px)); bottom: calc(18px + var(--safe-b)); width: 76px; height: 76px; background: rgba(220,70,60,.7); }
+  #tDrift { right: calc(118px + env(safe-area-inset-right, 0px)); bottom: calc(110px + var(--safe-b)); width: 70px; height: 70px; background: rgba(255,150,30,.75); font-size: 12px; }
+  .portrait #tPad { width: 160px; height: 104px; }
+  .portrait .hud-left .time { font-size: 24px; }
+  .portrait .hud-mid .d { font-size: 18px; }
+  .portrait .hbtn { width: 38px; height: 38px; font-size: 15px; }
+  .portrait #catchBanner { top: 18%; }
+  #nogl { position: fixed; inset: 0; display: grid; place-items: center; background: #13202c; z-index: 99; padding: 30px; text-align: center; }
+</style>
+</head>
+<body data-state="menu">
+<div id="game"></div>
+
+<div id="hud" hidden>
+  <div class="hud-top">
+    <div class="pill hud-left">
+      <div class="lvl" id="hudLevel">Village</div>
+      <div class="time" id="hudTime">0:00.0</div>
+      <div class="par"><span id="hudPar">Par 0:50</span> <span class="stars" id="hudStars">★★★</span></div>
+    </div>
+    <div class="pill hud-mid"><div class="d">🐶 <span id="hudDist">0 m</span></div><div class="s" id="hudStatus">Ready...</div></div>
+    <div class="hud-right">
+      <button class="hbtn" id="qBtn" title="Quality">HQ</button>
+      <button class="hbtn" id="muteBtn" title="Mute (M)">🔊</button>
+      <button class="hbtn" id="pauseBtn" title="Pause (Esc)">❚❚</button>
+    </div>
+  </div>
+  <div class="speedo"><b id="hudSpeed">0</b> <small>km/h</small></div>
+  <div id="catchMeter" hidden>Catching… stay close &amp; slow<div class="bar"></div></div>
+</div>
+<div id="arrow" hidden><div class="wrap"><div class="tip"></div><div class="face">🐶</div><div class="ad">0m</div></div></div>
+<div id="marker" hidden><div class="m">PUP</div></div>
+<div id="toast"></div>
+<div id="count" hidden>3</div>
+<div id="catchBanner" hidden><div class="t">Got you, buddy!</div><div class="s" id="catchSub"></div></div>
+<div id="hearts"></div>
+
+<div id="touch" hidden>
+  <div id="tPad"><div id="tKnob"></div></div>
+  <div class="tb" id="tDrift">DRIFT</div>
+  <div class="tb" id="tBrake">BRAKE</div>
+  <div class="tb" id="tGas">GO</div>
+</div>
+
+<div class="overlay" id="menu">
+  <div class="card">
+    <div class="title"><div class="logo">🐶</div><div><h1>Village Dash</h1><p class="tag">An e-bike chase to bring a lost pup home</p></div></div>
+    <div class="story">A happy little pup slipped its leash and is zooming through the sunny village. Hop on your electric dirt bike, follow it through the alleys and catch it <b>gently</b>: match its speed up close, corner it in a dead end, or find where it hides.</div>
+    <div id="levels"></div>
+    <div class="row">
+      <button class="btn primary" id="playBtn">▶ Play</button>
+    </div>
+    <div class="row">
+      <button class="btn small" id="menuMute">🔊 Sound on</button>
+      <button class="btn small" id="menuQ">Quality: High</button>
+    </div>
+    <div class="controls kbd-only">
+      <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows ride · <kbd>Space</kbd> drift (handbrake) · <kbd>R</kbd> reset · <kbd>Esc</kbd> pause · <kbd>M</kbd> mute · gamepad works too
+    </div>
+    <div class="controls touch-only">Left pad: steer. Right: <b>GO</b> throttle, <b>BRAKE</b>, <b>DRIFT</b> for sharp turns.</div>
+    <div class="fine">Original game. All art and music are generated in code. No pups are harmed: the bike brakes for you near the dog.</div>
+  </div>
+</div>
+
+<div class="overlay" id="pause" hidden>
+  <div class="card" style="width:min(380px,100%)">
+    <div class="res-head"><div class="big">⏸</div><h2>Paused</h2></div>
+    <div class="row"><button class="btn primary" id="resumeBtn">Resume</button></div>
+    <div class="row"><button class="btn" id="restartBtn">Restart</button><button class="btn" id="menuBtn">Menu</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="results" hidden>
+  <div class="card" style="width:min(440px,100%)">
+    <div class="res-head"><div class="big">🐶🏠</div><h2 id="rTitle">Got you, buddy!</h2><div style="color:#607080" id="rLevel">Village</div></div>
+    <div class="res-stars" id="rStars">★★★</div>
+    <div class="grid2">
+      <div class="stat"><small>Time</small><b id="rTime">0:00.0</b></div>
+      <div class="stat"><small>Par (3 stars)</small><b id="rPar">0:00.0</b></div>
+      <div class="stat wide"><small>Best time</small><b id="rBest">-</b></div>
+      <div class="stat"><small>Caught by</small><b id="rHow" style="font-size:15px">-</b></div>
+      <div class="stat"><small>Heavy bumps</small><b id="rCrash" style="font-size:15px">-</b></div>
+    </div>
+    <div class="row"><button class="btn primary" id="rNext">Next level ▶</button></div>
+    <div class="row"><button class="btn" id="rRetry">Retry</button><button class="btn" id="rMenu">Menu</button></div>
+  </div>
+</div>
+
+<div id="nogl" hidden><div><h2>WebGL isn't available</h2><p>Village Dash needs WebGL. Try a recent Safari, Chrome, Firefox or Edge.</p></div></div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
